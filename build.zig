@@ -1,5 +1,5 @@
 const std = @import("std");
-
+const Scanner = @import("wayland").Scanner;
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -37,7 +37,24 @@ pub fn build(b: *std.Build) void {
         webkit_mod.linkSystemLibrary("gtk4", dynamic_link_opts);
         webkit_mod.addImport("gtk", gtk_mod);
     }
-    // EXE
+    const scanner = Scanner.create(b, .{
+        // Just to clear the error of scanner not finding wayland-protocols
+        .wayland_protocols = b.path("."),
+    });
+    const wayland = b.createModule(.{ .root_source_file = scanner.result });
+    // WAYLAND
+    {
+        const wlr_protocols = b.dependency("wlr-protocols", .{});
+        const wayland_protocols = b.dependency("wayland-protocols", .{});
+        scanner.addCustomProtocol(wlr_protocols.path("unstable/wlr-layer-shell-unstable-v1.xml"));
+        scanner.addCustomProtocol(wayland_protocols.path("stable/xdg-shell/xdg-shell.xml"));
+        scanner.generate("wl_compositor", 1);
+        scanner.generate("wl_shm", 1);
+        scanner.generate("xdg_wm_base", 1);
+        scanner.generate("wl_output", 1);
+        scanner.generate("zwlr_layer_shell_v1", 1);
+    }
+    // EXEd
     const exe_mod = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
         .target = target,
@@ -51,17 +68,24 @@ pub fn build(b: *std.Build) void {
     });
     exe_mod.linkSystemLibrary("gtk4", dynamic_link_opts);
     exe_mod.linkSystemLibrary("webkitgtk-6.0", dynamic_link_opts);
-    const httpz = b.dependency("httpz", .{
+    exe_mod.linkSystemLibrary("wayland-client", dynamic_link_opts);
+
+    exe_mod.linkSystemLibrary("wpe-1.0", dynamic_link_opts);
+    exe_mod.linkSystemLibrary("wpebackend-fdo-1.0", dynamic_link_opts);
+
+    const dependency_args = .{
         .target = target,
         .optimize = optimize,
-    });
-    const zigcli = b.dependency("zig-cli", .{ .target = target });
+    };
+    const httpz = b.dependency("httpz", dependency_args);
+    const zigcli = b.dependency("zig-cli", dependency_args);
 
     exe_mod.addImport("httpz", httpz.module("httpz"));
     exe_mod.addImport("zig-cli", zigcli.module("zig-cli"));
     exe_mod.addImport("gtk", gtk_mod);
     exe_mod.addImport("layershell", layershell_mod);
     exe_mod.addImport("webkit", webkit_mod);
+    exe_mod.addImport("wayland", wayland);
 
     b.installArtifact(exe);
     // CMD

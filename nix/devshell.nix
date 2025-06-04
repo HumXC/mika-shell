@@ -13,6 +13,9 @@
   glib-networking,
   openssl,
   devhelp,
+  wayland-scanner,
+  libwpe-fdo,
+  libwpe,
   ...
 }: let
   # zig 不支持 -mfpmath=sse 选项
@@ -39,6 +42,9 @@ in
       webkitgtk_6_0
       devhelp
       lldb
+      wayland-scanner
+      libwpe-fdo
+      libwpe
     ];
     GIO_EXTRA_MODULES = "${glib-networking.out}/lib/gio/modules";
     shellHook = ''
