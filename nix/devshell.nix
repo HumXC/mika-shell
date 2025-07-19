@@ -25,6 +25,9 @@
   typescript,
   esbuild,
   nodejs_24,
+  polkit,
+  pam,
+  systemd,
   ...
 }: let
   # zig 不支持 -mfpmath=sse 选项
@@ -54,6 +57,10 @@ in
       dbus
       libwebp
       librsvg # 为 GTK 加载svg图标提供支持
+      polkit
+      pam
+      systemd
+
       # NPM Package
       esbuild
       nodejs_24

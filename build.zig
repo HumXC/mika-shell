@@ -12,6 +12,7 @@ pub fn build(b: *std.Build) void {
     var webkit_mod: *std.Build.Module = undefined;
     var dbus_mod: *std.Build.Module = undefined;
     var glib_mod: *std.Build.Module = undefined;
+    var polkit_mod: *std.Build.Module = undefined;
     // pkgs
     {
         gtk_mod = b.createModule(.{
@@ -42,6 +43,12 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .link_libc = true,
         });
+        polkit_mod = b.createModule(.{
+            .root_source_file = b.path("pkgs/polkit.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        });
         // Linking
         gtk_mod.linkSystemLibrary("gtk4", dynamic_link_opts);
         layershell_mod.linkSystemLibrary("gtk4-layer-shell-0", dynamic_link_opts);
@@ -49,13 +56,20 @@ pub fn build(b: *std.Build) void {
         layershell_mod.addImport("gtk", gtk_mod);
         webkit_mod.linkSystemLibrary("webkitgtk-6.0", dynamic_link_opts);
         webkit_mod.linkSystemLibrary("gtk4", dynamic_link_opts);
-
         webkit_mod.addImport("gtk", gtk_mod);
         dbus_mod.linkSystemLibrary("dbus-1", dynamic_link_opts);
         dbus_mod.addIncludePath(b.path("pkgs/dbus"));
         dbus_mod.addImport("glib", glib_mod);
         glib_mod.linkSystemLibrary("glib-2.0", dynamic_link_opts);
         glib_mod.linkSystemLibrary("gio-2.0", dynamic_link_opts);
+        polkit_mod.linkSystemLibrary("polkit-agent-1", dynamic_link_opts);
+        polkit_mod.linkSystemLibrary("polkit-gobject-1", dynamic_link_opts);
+        polkit_mod.linkSystemLibrary("glib-2.0", dynamic_link_opts);
+        polkit_mod.linkSystemLibrary("gio-2.0", dynamic_link_opts);
+        polkit_mod.linkSystemLibrary("libsystemd", dynamic_link_opts);
+        polkit_mod.addCSourceFile(.{ .file = b.path("pkgs/polkit.c") });
+        polkit_mod.addIncludePath(b.path("pkgs"));
+        polkit_mod.addImport("glib", glib_mod);
     }
     // EXAMPLE
     const example_mod = b.createModule(.{
@@ -88,6 +102,7 @@ pub fn build(b: *std.Build) void {
     exe_mod.linkSystemLibrary("gtk4", dynamic_link_opts);
     exe_mod.linkSystemLibrary("gtk4-wayland", dynamic_link_opts);
     exe_mod.linkSystemLibrary("webkitgtk-6.0", dynamic_link_opts);
+    exe_mod.linkSystemLibrary("polkit-agent-1", dynamic_link_opts);
     const httpz = b.dependency("httpz", .{ .target = target, .optimize = optimize });
     const zigcli = b.dependency("zig-cli", .{ .target = target, .optimize = optimize });
     const ini = b.dependency("ini", .{ .target = target, .optimize = optimize });
@@ -101,6 +116,7 @@ pub fn build(b: *std.Build) void {
     exe_mod.addImport("webkit", webkit_mod);
     exe_mod.addImport("glib", glib_mod);
     exe_mod.addImport("dbus", dbus_mod);
+    exe_mod.addImport("polkit", polkit_mod);
 
     b.installArtifact(exe);
     // CMD
